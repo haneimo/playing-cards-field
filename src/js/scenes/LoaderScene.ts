@@ -1,8 +1,19 @@
+import { CardNumber } from "../definsion/CardNumber";
+import { Suit } from "../definsion/Suit";
+import { generateDeck } from "../utils/CardUtils";
+
 export default class LoaderScene extends Phaser.Scene {
-  public preload() {
-    this.load.image("tiles", "./assets/images/tiles.png");
-    this.load.audio("jump", "./assets/audio/jump.mp3");
-    this.load.spritesheet("player", "./assets/images/player.png", { frameWidth: 16, frameHeight: 32 });
+
+  public async preload() {
+    const configPath = './assets/images/skins/irasutoya/';
+
+    for( const cardSimbol of generateDeck() ){
+      console.log(cardSimbol)
+      this.load.image(cardSimbol, configPath + cardSimbol + ".PNG")
+    }
+    this.load.image("BACK", configPath + "BACK.PNG")
+
+    
   }
 
   public create() {
