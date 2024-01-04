@@ -1,28 +1,33 @@
 import Card from "../gameObjects/Card";
 import { generateDeck } from "../utils/CardUtils";
 import SubMenu from "../gameObjects/SubMenu";
-import RectSelector from "../gameObjects/RectSelector";
 import FieldMenuButton from "../gameObjects/FieldMenuButton";
 import FieldMenu from "../gameObjects/FIeldMenu";
-import CardFieldCore from "../utils/CardFieldCore";
+import { generateAveragePosition } from "../utils/GameUtils";
 
 export default class GameScene extends Phaser.Scene {
-  private SYSTEM_UI_DEPTH = 100;
+  private SYSTEM_UI_DEPTH = 10000;
   private CARD_DEPTH = 1000;
   private CARD_WIDTH_NUMBERSPACE = 20;
 
-  private CardSprities: Card[] = [];
+  private cards: Card[] = [];
   private keyP: Phaser.Input.Keyboard.Key;
   private keyO: Phaser.Input.Keyboard.Key;
-  private selector: RectSelector;
+  private KeyI: Phaser.Input.Keyboard.Key;
+  private KeyU: Phaser.Input.Keyboard.Key;
+
   private subMenu: SubMenu;
   private fieldMenu: FieldMenu;
   private fieldMenuButton: FieldMenuButton;
+  private multiSelectMode: boolean = false;
+  private camera_radius: number = 0;
 
-  private core: CardFieldCore;
-
-
-  private updateCardDepth() {
+  private updateGameDepth() {
+    //menuのdepthを手前に設定する
+    this.subMenu.depth = this.SYSTEM_UI_DEPTH;
+    this.fieldMenu.depth = this.SYSTEM_UI_DEPTH;
+    this.fieldMenuButton.depth = this.SYSTEM_UI_DEPTH;
+    
     this.cards.forEach((card, i) => {
       card.depth = i+this.CARD_DEPTH;
     });
@@ -30,6 +35,18 @@ export default class GameScene extends Phaser.Scene {
 
   // commandのリスト
   private cardMenuCommands:{[key: string]:()=>void} = {
+    "onMultiSelect":()=>{
+      // 複数選択モードを有効にする
+      this.multiSelectMode = true;
+    },
+    "offMultiSelect":()=>{
+      // 複数選択モードを無効にする
+      this.multiSelectMode = false;
+      // 選択中のカードをクリアする
+      this.cards.filter(card => card.isSelected()).forEach(card =>{
+        card.clearSelected();
+      });
+    },
     "setGroup": () => { console.log("setGroup") },
     "moveToField": () => { console.log("moveTo") },
     "faceUp": () => {
@@ -51,14 +68,12 @@ export default class GameScene extends Phaser.Scene {
       });
     },
     "sortLine": () => {
-      //選択中のカードをソートし、depth順に並べる
-      const selectedCards = this.cards.filter(card => card.isSelected()).sort((a, b) => a.depth - b.depth);
-
+      //選択中のカードを抽出する
+      const selectedCards = this.cards.filter(card => card.isSelected())
+      
       // 起点は選択中のカードの中で一番左にあるカード
       const startX = Math.min(...selectedCards.map(card => card.x));
       const startY = Math.min(...selectedCards.map(card => card.y));
-      const endX = Math.max(...selectedCards.map(card => card.x));
-      const endY = Math.max(...selectedCards.map(card => card.y));
 
       selectedCards.forEach((card, i) => {
         card.movePositionWithAnimation(startX + this.CARD_WIDTH_NUMBERSPACE * i, startY);
@@ -73,6 +88,39 @@ export default class GameScene extends Phaser.Scene {
   };
 
   private fieldMenuCommands:{[key: string]:()=>void} = {
+    "handOutCards" : () => {
+      // cardsのgroupを変更する
+      const groups = [{name: "group1", isOrderble: true},
+      {name: "group2", isOrderble: true},
+      {name: "group3", isOrderble: true},
+      {name: "group4", isOrderble: true}];
+
+      this.cards.forEach(card => {
+        card.setGroup(groups[Phaser.Math.RND.between(0, groups.length-1)]);
+      });
+
+      // 表示順制御のためsortする
+      this.sortGroup();
+
+      // グループごとにカードを束にする
+      const groupsCard:Card[][] = Object.values(this.cards.reduce((stocker, currentCard) => {
+        if( currentCard.getGroup().name in stocker) {
+          stocker[currentCard.getGroup().name].push(currentCard);
+        }else {
+          stocker[currentCard.getGroup().name] = [currentCard];
+        }
+        return stocker;
+      }, {}))
+
+      let i=0;
+      for( const pos of generateAveragePosition(
+        this.sys.game.config.width as number, 
+        this.sys.game.config.height as number, 
+        groupsCard.length)){
+          this.buildStock(groupsCard[i], pos.x, pos.y);
+          i++;
+      }
+    },
     "spreadRandom": () => { 
       // cardsをランダムに配置し直す
       this.cards.forEach(card => {
@@ -85,15 +133,22 @@ export default class GameScene extends Phaser.Scene {
       const centerX = this.sys.game.config.width as number / 2;
       const centerY = this.sys.game.config.height as number / 2;
 
-      this.buildStock(centerX, centerY);
+      this.buildStock(this.cards, centerX, centerY);
     },
     "shuffle": () => { 
+      // 対象カードの左上のカードを取得する
+      const topLeftCard = this.cards.reduce((minCard, card) => {
+        if(card.x < minCard.x && card.y < minCard.y) {
+          return card;
+        } else {
+          return minCard;
+        }
+      });
+
       // cardsをシャッフルする（カードのToplevelの順序をランダムにする）
       this.cards.sort(() => Math.random() - 0.5);
       // ソート済みのカードどおりに再背面に配置していく
-      this.buildStock(this.cards[this.cards.length-1].x, this.cards[this.cards.length-1].y);
-      this.updateCardDepth();
-      console.log("shuffle") 
+      this.buildStock(this.cards, topLeftCard.x, topLeftCard.y );
     },
 
     "cancel": () => { console.log("cancel") },
@@ -112,6 +167,8 @@ export default class GameScene extends Phaser.Scene {
   public create() {
     this.keyP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
     this.keyO = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O);
+    this.KeyI = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.I);
+    this.KeyU = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.U);
 
     this.drawGrid(this.game);
 
@@ -128,17 +185,12 @@ export default class GameScene extends Phaser.Scene {
     const gameHeight = this.sys.game.config.height as number;
     this.cameras.main.setSize(gameWidth, gameHeight); // カメラのサイズを設定
 
-    // 矩形セレクターを作成
-    this.add.existing(this.selector = new RectSelector(this, 0, 0, this.cards));
-
     // Cardのサブメニューを作成
     this.add.existing(this.subMenu = new SubMenu(this, this.cardMenuCommands));
 
     // フィールドメニューを作成
     this.add.existing(this.fieldMenuButton = new FieldMenuButton(this, 0, 0));    
-    this.add.existing(this.fieldMenu = new FieldMenu(this, this.fieldMenuCommands, ()=>{
-      this.fieldMenuButton.show()
-    }));
+    this.add.existing(this.fieldMenu = new FieldMenu(this, this.fieldMenuCommands));
 
     // イベントをバインド
     this.bindEvents();
@@ -152,6 +204,13 @@ export default class GameScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.keyO)) {
       this.cameras.main.zoom /= 1.1; // ズームアウト
     }
+    if (Phaser.Input.Keyboard.JustDown(this.KeyI)) {
+      this.cameras.main.setRotation(this.camera_radius += 0.1); // 回転
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.KeyU)) {
+      this.cameras.main.setRotation(this.camera_radius -= 0.1); // 回転
+    }
+
   }
 
   private drawGrid(
@@ -177,9 +236,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // カードの束を作る
-  private buildStock(x, y) {
+  private buildStock(targetCards: Card[], x:number, y:number) {    
     // カードを画面中央に集める
-    this.cards.forEach((card, i) => {
+    targetCards.forEach((card, i) => {
       //カードは束であることがわかるように左上から1pxずつずれて少し重なるように配置する
       card.movePositionWithAnimation(x + i*1, y + i*1);
     });
@@ -199,29 +258,9 @@ export default class GameScene extends Phaser.Scene {
         }
       });
       if(isCardClicked) return;
-
       this.subMenu.close();
-      // this.targetCardsに含まれないオブジェクトをクリックした場合は矩形選択を開始する
-      this.selector.startDrag(pointer.x, pointer.y);
     });
-    
-    // ドラッグ中のマウスの位置に合わせて矩形を描画する
-    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
-      this.selector.refleshRect(pointer.x, pointer.y);
-    });
-  
-    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
-      // ドラッグ終了時に矩形選択を終了し、矩形選択範囲を終了する
-      if(this.selector.isSelecting()){
-        this.selector.endDrag();
-      }
-
-      // pointerdownからの経過時間が短い場合はメニューを表示する
-      if(pointer.getDuration() < 200) {
-        this.subMenu.open(pointer.x, pointer.y);
-      }
-    });
-
+      
     this.input.on("drag", (pointer, gameObject, dragX, dragY) => {
       if(gameObject instanceof Card) {
         const card = (gameObject as Card)
@@ -238,19 +277,12 @@ export default class GameScene extends Phaser.Scene {
       }
     });
 
-    // drag終了時にselectedの状態を解除する
-    this.input.on("dragend", (pointer, gameObject) => {
-      if(gameObject instanceof Card) {
-        //cardsの選択状態を解除する
-        //this.cards.forEach(card => {
-        //  card.clearSelected();
-        //});
-      }
-    });
-
     // カードをクリックした際にサブメニューを表示する用にバインド
     this.cards.forEach( card => {
       card.on('pointerdown', () => {
+        if(!this.multiSelectMode) {
+          this.cards.forEach(card => card.clearSelected());
+        }
         card.setSelected()
         this.subMenu.open(card.x, card.y);
       });
@@ -260,6 +292,27 @@ export default class GameScene extends Phaser.Scene {
     // openFieldMenuメニューイベントが発生する
     this.fieldMenuButton.on('pointerdown', (pointer:PointerEvent) => {
       this.fieldMenu.open(pointer, pointer.y, this.fieldMenuButton);
+    });
+
+    // refleshGameDepthメニューイベントが発生した場合の処理
+    this.events.on('updateGameDepth', () => {
+      this.updateGameDepth();
+    });
+
+  }
+
+
+  // カードの情報からdepthを設定する
+  private sortGroup() {
+    // カードをグループ(あいうえお順)＞カード番号＞カードのスートの順(Spade/Heart/Clab/Diamondでソートする
+
+    this.cards.sort((a, b) => {
+      // グループ名は文字列なので、文字列の大小比較(辞書順)を行う
+      if(a.getGroup().name == b.getGroup().name) {
+        return 0;
+      } else {
+        return a.getGroup().name > b.getGroup.name ? 1 : -1;
+      }
     });
   }
 }

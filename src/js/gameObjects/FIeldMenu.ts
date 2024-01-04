@@ -1,7 +1,7 @@
 import { calcDistance } from "../utils/GameUtils";
 
 export default class FieldMenu extends Phaser.GameObjects.Container {
-    constructor(scene, commands:{[index: string]:()=>void}, closeCallback:()=>void) {
+    constructor(scene, commands:{[index: string]:()=>void}) {
         super(scene);
         this.scene.add.existing(this);
         this.setInteractive();
@@ -13,7 +13,8 @@ export default class FieldMenu extends Phaser.GameObjects.Container {
             item.setInteractive();
             item.on('pointerdown', ()=>{
                 commands[commandName]();
-                closeCallback();
+                // refleshGameDepthイベントを発火する
+                this.scene.events.emit("updateGameDepth");
                 this.close();
             });
             this.add(item);

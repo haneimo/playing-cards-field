@@ -12,7 +12,6 @@ export default class LoaderScene extends Phaser.Scene {
       this.load.image(cardSimbol, configPath + cardSimbol + ".PNG")
     }
     this.load.image("BACK", configPath + "BACK.PNG")
-
     
   }
 

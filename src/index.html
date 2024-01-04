@@ -22,6 +22,46 @@
         background-position: 0 0, 0 0, 10px 18px, 10px 18px, 0 0, 10px 18px;      
       }
 
+      #chat-window {
+        /* チャットウインドウをレスポンシブデザインに対応させる */
+        /* 画面の縦幅のほうが横幅よりも小さい場合、#game-window要素よりも右にチャットウインドウを配置する */
+        /* 画面の縦幅のほうが横幅よりも大きい場合、#game-window要素よりも下にチャットウインドウを配置する */
+        @media (max-width: 768px) {
+          #chat-window {
+            position: absolute;
+            top: 0;
+            right: 0;
+          }
+        }
+
+        @media (min-width: 768px) {
+          #chat-window {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+          }
+        }
+      }
+
+      #chat-input {
+        /* チャット入力欄は#chat-windowの最下段に配置する。
+        横幅は#chat-windowと同じ幅となるように定義する */
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+
+      }
+        
+      #chat-log {
+        /* チャットログは#chat-windowの上段に配置する。
+        横幅は#chat-windowと同じ幅となるように定義する。
+        縦幅は#chat-inputを除いた高さに設定する */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+      }
     </style>
   </head>
   <body></body>

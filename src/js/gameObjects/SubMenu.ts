@@ -19,6 +19,8 @@ export default class SubMenu extends Phaser.GameObjects.Container {
             item.setInteractive();
             item.on('pointerdown', ()=>{
                 commands[commandName]();
+                // refleshGameDepthイベントを発火する
+                this.scene.events.emit("updateGameDepth");
                 this.close()
             });
             this.add(item);
