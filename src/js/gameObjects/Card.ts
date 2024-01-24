@@ -1,18 +1,16 @@
 import GameScene from "../scenes/GameScene";
 import { CardSurfaceType } from "../definsion/CardSurfaceType";
-import { CardGroup } from "../definsion/CardGroup";
 import { GameConstants } from "../definsion/GameConstants";
+import GroupMerker from "./GroupMarker";
 
 export default class Card extends Phaser.GameObjects.Sprite{
   public scene: GameScene;
   private selected: boolean = false;
   private cardKind: string;
   surfaceState: CardSurfaceType = "FRONT";
-  private group: CardGroup = {name: "default", isOrderble: false};
+  private group: GroupMerker;
 
-  // カーソルを描画するためのグラフィックスオブジェクトを作成
   private sprite: Phaser.GameObjects.Sprite;
-  private graphics: Phaser.GameObjects.Graphics;
 
 
   constructor(scene: GameScene, cardKind:string, x: number, y: number) {
@@ -21,13 +19,11 @@ export default class Card extends Phaser.GameObjects.Sprite{
     this.cardKind = cardKind;
     this.name = cardKind;
 
+    this.setInteractive();
+    
     // カードの画像をGAME_CARD_WIDTH x GAME_CARD_HEIGHTにリサイズする
     this.displayWidth = GameConstants.GAME_CARD_WIDTH;
-    this.displayHeight = GameConstants.GAME_CARD_HEIGHT;
-    
-    // カードをドラッグできるようにする
-    this.setInteractive();
-    this.scene.input.setDraggable(this);
+    this.displayHeight = GameConstants.GAME_CARD_HEIGHT;    
   }
 
   // カードをめくる(BACKのimageに変更する)
@@ -91,7 +87,7 @@ export default class Card extends Phaser.GameObjects.Sprite{
     return this.group;
   }
 
-  public setGroup(group: CardGroup) {
+  public setGroup(group: GroupMerker) {
     this.group = group;
   }
 

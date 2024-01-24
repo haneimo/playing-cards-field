@@ -4,7 +4,7 @@ export const calcDistance = function(x, y, x2, y2) {
     return Math.sqrt(Math.pow(x - x2, 2) + Math.pow(y - y2, 2));    
 }
 
-export const generateAveragePosition = function*(screenWidth, screenHeight, count) {
+export const generateAveragePosition = function*(screenWidth:number, screenHeight:number, count:number): Generator<{x: number, y: number}> {
     // 画面でcount個のポイントを生成する
     // 生成するポイントは画面を中心とした楕円形に配置する
     // 画面の中心を原点とした座標系で考える
@@ -15,8 +15,8 @@ export const generateAveragePosition = function*(screenWidth, screenHeight, coun
     const angle = 360 / count;
     let currentAngle = 0;
     for(let i=0; i<count; i++) {
-        const x = centerX + radiusX * Math.cos(currentAngle * Math.PI / 180);
-        const y = centerY + radiusY * Math.sin(currentAngle * Math.PI / 180);
+        const x = centerX + radiusX * Math.cos(currentAngle * Math.PI / 180 + Math.PI/2 );
+        const y = centerY + radiusY * Math.sin(currentAngle * Math.PI / 180 + Math.PI/2 );
         currentAngle += angle;
         yield {x, y};
     }
